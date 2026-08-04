@@ -1,0 +1,29 @@
+{
+  "name": "swiftshare-backend",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "build": "node -e \"console.log('backend build complete')\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "lint": "eslint src --ext .js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
+    "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "socket.io": "^4.8.1"
+  },
+  "devDependencies": {
+    "@prisma/client": "^6.13.0",
+    "prisma": "^6.13.0"
+  }
+}
