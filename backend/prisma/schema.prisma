@@ -6,3 +6,132 @@ datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
 }
+
+enum DevicePlatform {
+  WINDOWS
+  MACOS
+  LINUX
+  ANDROID
+  IOS
+  IPADOS
+  WEB
+  UNKNOWN
+}
+
+enum TransferStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  CANCELLED
+  FAILED
+}
+
+enum PairingStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  displayName  String?
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  devices Device[]
+
+  @@index([isActive, createdAt])
+}
+
+model Device {
+  id            String         @id @default(cuid())
+  deviceId      String         @unique
+  userId        String
+  deviceName    String
+  ipAddress     String
+  platform      DevicePlatform
+  status        String         @default("connected")
+  socketId      String?        @unique
+  connectedAt   DateTime?
+  lastSeenAt    DateTime?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  user                User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sentTransfers       Transfer[]         @relation("DeviceSentTransfers")
+  receivedTransfers   Transfer[]         @relation("DeviceReceivedTransfers")
+  pairingsAsSender    Pairing[]          @relation("PairingSenderDevice")
+  pairingsAsReceiver  Pairing[]          @relation("PairingReceiverDevice")
+
+  @@index([userId, platform])
+  @@index([status, lastSeenAt])
+  @@index([socketId])
+}
+
+model Pairing {
+  id               String         @id @default(cuid())
+  pairingId        String         @unique
+  senderDeviceId   String
+  receiverDeviceId String
+  status           PairingStatus   @default(PENDING)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  senderDevice   Device @relation("PairingSenderDevice", fields: [senderDeviceId], references: [id], onDelete: Cascade)
+  receiverDevice Device @relation("PairingReceiverDevice", fields: [receiverDeviceId], references: [id], onDelete: Cascade)
+
+  @@unique([senderDeviceId, receiverDeviceId])
+  @@index([status, createdAt])
+  @@index([senderDeviceId])
+  @@index([receiverDeviceId])
+}
+
+model Transfer {
+  id               String         @id @default(cuid())
+  transferId       String         @unique
+  senderDeviceId   String
+  receiverDeviceId String
+  fileName         String
+  fileSize         BigInt
+  bytesTransferred BigInt         @default(0)
+  progress         Int            @default(0)
+  status           TransferStatus @default(ACTIVE)
+  socketId         String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  senderDevice   Device           @relation("DeviceSentTransfers", fields: [senderDeviceId], references: [id], onDelete: Cascade)
+  receiverDevice Device           @relation("DeviceReceivedTransfers", fields: [receiverDeviceId], references: [id], onDelete: Cascade)
+  history        TransferHistory?
+
+  @@index([status, createdAt])
+  @@index([senderDeviceId])
+  @@index([receiverDeviceId])
+  @@index([socketId])
+}
+
+model TransferHistory {
+  id             String         @id @default(cuid())
+  transferId     String         @unique
+  senderDeviceId String
+  receiverDeviceId String
+  fileName       String
+  fileSize       BigInt
+  status         TransferStatus
+  transferTime   DateTime       @default(now())
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  transfer Transfer @relation("TransferHistory", fields: [transferId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@index([transferTime])
+  @@index([senderDeviceId])
+  @@index([receiverDeviceId])
+}
