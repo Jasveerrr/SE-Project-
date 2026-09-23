@@ -45,15 +45,16 @@ function requireSocketData(socket) {
 }
 
 function resolveSocketDeviceId(socket, payload = {}) {
-  return (
-    toTrimmedString(
-      payload.senderDeviceId ??
-        payload.sourceDeviceId ??
-        payload.fromDeviceId ??
-        payload.deviceId ??
-        socket.data?.deviceId
-    ) || ""
+  const payloadDeviceId = toTrimmedString(
+    payload.senderDeviceId ?? payload.sourceDeviceId ?? payload.fromDeviceId ?? payload.deviceId
   );
+  const rememberedDeviceId = toTrimmedString(socket.data?.deviceId);
+
+  if (rememberedDeviceId && payloadDeviceId && payloadDeviceId !== rememberedDeviceId) {
+    throw new AppError("This socket is already associated with another device.", 403);
+  }
+
+  return rememberedDeviceId || payloadDeviceId;
 }
 
 function resolveReceiverDeviceId(payload = {}) {
@@ -311,6 +312,10 @@ export const SocketService = {
 
     if (deviceId) {
       rememberDeviceId(socket, deviceId);
+      if (typeof socket.join === "function") {
+        await socket.join(deviceRoom(deviceId));
+        if (socket.data?.rooms instanceof Set) socket.data.rooms.add(deviceRoom(deviceId));
+      }
     }
 
     emitBroadcast(socket, io, EVENT_NAMES.deviceDiscover, result);

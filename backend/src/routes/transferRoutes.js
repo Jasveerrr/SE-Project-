@@ -1,7 +1,10 @@
 import { Router } from "express";
 import { TransferController } from "../controllers/TransferController.js";
+import { authMiddleware } from "../middleware/authMiddleware.js";
 
 export const transferRoutes = Router();
+
+transferRoutes.use(authMiddleware);
 
 transferRoutes.post("/transfers", TransferController.startTransfer);
 transferRoutes.get("/transfers", TransferController.getTransfers);

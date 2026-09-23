@@ -46,12 +46,11 @@ function validatePassword(password) {
     throw new AppError("Password is required.", 400);
   }
 
-  const normalizedPassword = password.trim();
-  if (normalizedPassword.length < 8 || normalizedPassword.length > 128) {
+  if (password.length < 8 || password.length > 128) {
     throw new AppError("Password must be between 8 and 128 characters.", 400);
   }
 
-  return normalizedPassword;
+  return password;
 }
 
 function resolveAuthPayload(payload = {}) {

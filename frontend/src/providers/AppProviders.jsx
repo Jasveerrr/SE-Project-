@@ -1,3 +1,5 @@
+import { AuthContextProvider } from "../context/AuthContext.jsx";
+
 export function AppProviders({ children }) {
-  return children ?? null;
+  return <AuthContextProvider>{children}</AuthContextProvider>;
 }

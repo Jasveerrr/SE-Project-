@@ -108,7 +108,7 @@ model Transfer {
 
   senderDevice   Device           @relation("DeviceSentTransfers", fields: [senderDeviceId], references: [id], onDelete: Cascade)
   receiverDevice Device           @relation("DeviceReceivedTransfers", fields: [receiverDeviceId], references: [id], onDelete: Cascade)
-  history        TransferHistory?
+  history        TransferHistory? @relation("TransferHistory")
 
   @@index([status, createdAt])
   @@index([senderDeviceId])

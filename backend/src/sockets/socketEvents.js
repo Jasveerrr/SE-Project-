@@ -1,6 +1,4 @@
 import { SocketService } from "../services/SocketService.js";
-import { DeviceService } from "../services/DeviceService.js";
-import { TransferService } from "../services/TransferService.js";
 const ERROR_EVENT = "socket:error";
 
 function handleSocketError(socket, eventName, error, ack) {
@@ -42,7 +40,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("device:discover", async (payload = {}, ack) => {
     try {
-      const data = await DeviceService.discoverDevices?.({ socket, io, payload, ack });
+      const data = await SocketService.broadcastDeviceDiscovery?.({ socket, io, payload, ack });
       const response = { ok: true, event: "device:discover", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {
@@ -51,7 +49,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("device:refresh", async (payload = {}, ack) => {
     try {
-      const data = await DeviceService.refreshDevices?.({ socket, io, payload, ack });
+      const data = await SocketService.broadcastDeviceDiscovery?.({ socket, io, payload, ack });
       const response = { ok: true, event: "device:refresh", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {
@@ -87,7 +85,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("transfer:start", async (payload = {}, ack) => {
     try {
-      const data = await TransferService.startTransfer?.({ socket, io, payload, ack });
+      const data = await SocketService.notifyTransferStarted?.({ socket, io, payload, ack });
       const response = { ok: true, event: "transfer:start", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {
@@ -96,7 +94,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("transfer:progress", async (payload = {}, ack) => {
     try {
-      const data = await TransferService.updateTransferProgress?.({ socket, io, payload, ack });
+      const data = await SocketService.notifyTransferProgress?.({ socket, io, payload, ack });
       const response = { ok: true, event: "transfer:progress", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {
@@ -105,7 +103,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("transfer:cancel", async (payload = {}, ack) => {
     try {
-      const data = await TransferService.cancelTransfer?.({ socket, io, payload, ack });
+      const data = await SocketService.notifyTransferCancelled?.({ socket, io, payload, ack });
       const response = { ok: true, event: "transfer:cancel", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {
@@ -114,7 +112,7 @@ export function registerSocketEvents(socket, io) {
   });
   socket.on("transfer:complete", async (payload = {}, ack) => {
     try {
-      const data = await TransferService.completeTransfer?.({ socket, io, payload, ack });
+      const data = await SocketService.notifyTransferCompleted?.({ socket, io, payload, ack });
       const response = { ok: true, event: "transfer:complete", data };
       if (typeof ack === "function") ack(response);
     } catch (error) {

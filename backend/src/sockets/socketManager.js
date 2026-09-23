@@ -1,6 +1,7 @@
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
-import { socketEvents } from "./socketEvents.js";
+import { registerSocketEvents } from "./socketEvents.js";
 
 export let io = null;
 
@@ -11,6 +12,16 @@ function buildCorsOrigins() {
     .filter(Boolean);
 
   return configuredOrigins.length > 0 ? configuredOrigins : ["http://localhost:5173"];
+}
+
+function getSocketToken(socket) {
+  const authToken = socket.handshake?.auth?.token;
+  if (typeof authToken === "string" && authToken.trim()) return authToken.trim();
+
+  const authorization = socket.handshake?.headers?.authorization;
+  return typeof authorization === "string" && authorization.startsWith("Bearer ")
+    ? authorization.slice(7).trim()
+    : "";
 }
 
 export function registerSocketServer(server) {
@@ -35,15 +46,33 @@ export function registerSocketServer(server) {
       pingInterval: 25000,
     });
 
+    io.use((socket, next) => {
+      try {
+        const token = getSocketToken(socket);
+        if (!token) return next(new Error("Authentication required."));
+
+        const claims = jwt.verify(token, env.JWT_SECRET);
+        if (!claims || typeof claims !== "object" || typeof claims.sub !== "string") {
+          return next(new Error("Invalid authentication token."));
+        }
+
+        socket.data.userId = claims.sub;
+        socket.data.email = typeof claims.email === "string" ? claims.email : undefined;
+        return next();
+      } catch (_error) {
+        return next(new Error("Invalid authentication token."));
+      }
+    });
+
     io.on("connection", (socket) => {
       console.log(`[socket] client connected`, { socketId: socket.id });
 
       // Socket event registration stays in the dedicated event module.
-      if (typeof socketEvents !== "function") {
-        throw new TypeError("socketEvents must export a function.");
+      if (typeof registerSocketEvents !== "function") {
+        throw new TypeError("registerSocketEvents must export a function.");
       }
 
-      socketEvents(socket, io);
+      registerSocketEvents(socket, io);
 
       socket.on("disconnect", (reason) => {
         console.log(`[socket] client disconnected`, {

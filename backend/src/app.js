@@ -5,9 +5,9 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import { env } from "./config/env.js";
-import { authRoutes } from "./routes/AuthRoutes.js";
-import { deviceRoutes } from "./routes/DeviceRoutes.js";
-import { transferRoutes } from "./routes/TransferRoutes.js";
+import { authRoutes } from "./routes/authRoutes.js";
+import { deviceRoutes } from "./routes/deviceRoutes.js";
+import { transferRoutes } from "./routes/transferRoutes.js";
 import { pairingRoutes } from "./routes/PairingRoutes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
 

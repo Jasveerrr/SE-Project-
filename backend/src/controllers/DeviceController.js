@@ -1,112 +1,63 @@
 import { DeviceService } from "../services/DeviceService.js";
 
-const DEFAULT_ERROR_MESSAGE = "An unexpected device error occurred.";
-
-function getRequestPayload(request) {
-  return request.body ?? {};
+function payload(request) {
+  return { ...(request.body ?? {}), ...(request.params ?? {}), userId: request.user?.id };
 }
 
-function getDeviceId(request) {
-  return request.params?.deviceId ?? request.body?.deviceId ?? request.query?.deviceId ?? null;
-}
-
-function getQueryPayload(request) {
-  return request.query ?? {};
-}
-
-function buildDevicePayload(request) {
-  return {
-    ...getRequestPayload(request),
-    deviceId: getDeviceId(request),
-  };
-}
-
-function sendNotImplemented(response, message) {
-  return response.status(501).json({
-    success: false,
-    message,
-  });
-}
-
-function sendSuccess(response, statusCode, message, data, extra = {}) {
-  return response.status(statusCode).json({
-    success: true,
-    message,
-    data,
-    ...extra,
-  });
-}
-
-function sendError(response, error) {
-  const message = error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
-  const statusCode =
-    error?.statusCode ??
-    (message.includes("not found") ? 404 : message.includes("required") ? 400 : 500);
-
-  return response.status(statusCode).json({
-    success: false,
-    message,
-  });
-}
-
-async function runDeviceAction(response, statusCode, message, action) {
-  try {
-    const result = await action();
-    return sendSuccess(response, statusCode, message, result, {
-      count: Array.isArray(result) ? result.length : undefined,
-    });
-  } catch (error) {
-    return sendError(response, error);
-  }
+function send(response, statusCode, result) {
+  return response.status(statusCode).json({ success: true, ...result });
 }
 
 export const DeviceController = {
-  async discoverDevice(request, response) {
-    return runDeviceAction(response, 201, "Device discovered.", () =>
-      DeviceService.discoverDevices({ payload: getRequestPayload(request) })
-    );
-  },
-
-  async refreshDevice(request, response) {
-    return runDeviceAction(response, 200, "Device refreshed.", () =>
-      DeviceService.refreshDevices({ payload: getRequestPayload(request) })
-    );
-  },
-
-  async getDevice(request, response) {
+  async discoverDevice(request, response, next) {
     try {
-      const device = await DeviceService.getDevice({
-        payload: buildDevicePayload(request),
-      });
-      return sendSuccess(response, 200, "Device retrieved.", device);
+      return send(
+        response,
+        201,
+        await DeviceService.discoverDevices({ payload: payload(request) })
+      );
     } catch (error) {
-      return sendError(response, error);
+      return next(error);
     }
   },
-
-  async getDevices(request, response) {
-    return sendNotImplemented(response, "Device listing is not available in DeviceService.");
-  },
-
-  async updateDevice(request, response) {
+  async refreshDevice(request, response, next) {
     try {
-      const device = await DeviceService.updateDevice({
-        payload: buildDevicePayload(request),
-      });
-      return sendSuccess(response, 200, "Device updated.", device);
+      return send(response, 200, await DeviceService.refreshDevices({ payload: payload(request) }));
     } catch (error) {
-      return sendError(response, error);
+      return next(error);
     }
   },
-
-  async removeDisconnectedDevice(request, response) {
+  async getDevice(request, response, next) {
     try {
-      const device = await DeviceService.removeDisconnectedDevice({
-        payload: buildDevicePayload(request),
-      });
-      return sendSuccess(response, 200, "Device removed.", device);
+      return send(response, 200, await DeviceService.getDevice({ payload: payload(request) }));
     } catch (error) {
-      return sendError(response, error);
+      return next(error);
+    }
+  },
+  async getDevices(request, response, next) {
+    try {
+      const devices = await DeviceService.listDevices({ payload: { userId: request.user?.id } });
+      return send(response, 200, { message: "Devices retrieved.", devices, count: devices.length });
+    } catch (error) {
+      return next(error);
+    }
+  },
+  async updateDevice(request, response, next) {
+    try {
+      return send(response, 200, await DeviceService.updateDevice({ payload: payload(request) }));
+    } catch (error) {
+      return next(error);
+    }
+  },
+  async removeDisconnectedDevice(request, response, next) {
+    try {
+      return send(
+        response,
+        200,
+        await DeviceService.removeDisconnectedDevice({ payload: payload(request) })
+      );
+    } catch (error) {
+      return next(error);
     }
   },
 };
