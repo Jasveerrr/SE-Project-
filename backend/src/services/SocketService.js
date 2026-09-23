@@ -162,6 +162,7 @@ function buildDiscoveryPayload(socket, payload = {}) {
   return {
     ...payload,
     deviceId: socketDeviceId || toTrimmedString(payload.deviceId) || undefined,
+    userId: socket.data?.userId ?? payload.userId,
   };
 }
 
@@ -214,6 +215,14 @@ async function sendTransferNotification({ socket, io, payload, serviceMethod, ev
   }
 
   return result;
+}
+
+function toBinaryBuffer(value) {
+  if (Buffer.isBuffer(value)) return value;
+  if (value instanceof ArrayBuffer) return Buffer.from(value);
+  if (ArrayBuffer.isView(value))
+    return Buffer.from(value.buffer, value.byteOffset, value.byteLength);
+  return null;
 }
 
 export const SocketService = {
@@ -340,6 +349,44 @@ export const SocketService = {
       serviceMethod: TransferService.updateTransferProgress,
       eventName: EVENT_NAMES.transferProgress,
     });
+  },
+
+  async notifyTransferChunk({ socket, io, payload = {} } = {}) {
+    assertSocket(socket);
+    assertIo(io);
+    assertPayload(payload);
+
+    const chunk = toBinaryBuffer(payload.chunk);
+    if (!chunk || !chunk.length) throw new AppError("A non-empty binary chunk is required.", 400);
+
+    const enrichedPayload = buildSocketPayload(socket, payload);
+    const currentResult = await TransferService.getTransfer({ socket, payload: enrichedPayload });
+    const currentTransfer = currentResult.transfer;
+    const bytesTransferred = BigInt(enrichedPayload.bytesTransferred);
+    const fileSize = BigInt(currentTransfer.fileSize);
+    if (bytesTransferred > fileSize)
+      throw new AppError("bytesTransferred cannot exceed fileSize.", 400);
+    const progressResult =
+      bytesTransferred === fileSize
+        ? currentResult
+        : await TransferService.updateTransferProgress({ socket, payload: enrichedPayload });
+    const transfer = withServiceResultMetadata(progressResult, "transfer");
+    if (!transfer) throw new AppError("Transfer progress could not be updated.", 500);
+
+    emitToDevice(io, transfer.targetDeviceId, "transfer:chunk", {
+      transferId: transfer.transferId,
+      sequence: payload.sequence,
+      fileName: transfer.fileName,
+      fileSize: transfer.fileSize,
+      chunk,
+    });
+    emitToParticipants(
+      io,
+      [transfer.sourceDeviceId, transfer.targetDeviceId],
+      EVENT_NAMES.transferProgress,
+      progressResult
+    );
+    return progressResult;
   },
 
   async notifyTransferCompleted({ socket, io, payload = {} } = {}) {

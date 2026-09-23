@@ -101,6 +101,15 @@ export function registerSocketEvents(socket, io) {
       handleSocketError(socket, "transfer:progress", error, ack);
     }
   });
+  socket.on("transfer:chunk", async (payload = {}, ack) => {
+    try {
+      const data = await SocketService.notifyTransferChunk?.({ socket, io, payload, ack });
+      const response = { ok: true, event: "transfer:chunk", data };
+      if (typeof ack === "function") ack(response);
+    } catch (error) {
+      handleSocketError(socket, "transfer:chunk", error, ack);
+    }
+  });
   socket.on("transfer:cancel", async (payload = {}, ack) => {
     try {
       const data = await SocketService.notifyTransferCancelled?.({ socket, io, payload, ack });
