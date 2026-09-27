@@ -206,6 +206,7 @@ export function Dashboard() {
     () => devices.filter((device) => device.deviceId !== ownDevice?.deviceId),
     [devices, ownDevice]
   );
+  const currentUserId = user?.id ?? user?.userId;
   useEffect(() => {
     if (import.meta.env.VITE_PUBLIC_APP_URL) return undefined;
     let active = true;
@@ -443,7 +444,7 @@ export function Dashboard() {
                 <DeviceCard
                   key={device.deviceId}
                   device={device}
-                  own={device.userId === user.id}
+                  own={device.userId === currentUserId || device.user?.id === currentUserId}
                   current={device.deviceId === ownDevice?.deviceId}
                   selected={selectedDevice?.deviceId === device.deviceId}
                   onSelect={setSelectedDevice}
