@@ -10,14 +10,22 @@ import { deviceRoutes } from "./routes/deviceRoutes.js";
 import { transferRoutes } from "./routes/transferRoutes.js";
 import { pairingRoutes } from "./routes/PairingRoutes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
+import { isAllowedClientOrigin } from "./config/cors.js";
 
 export const app = express();
+
+const clientOrigins = String(env.CLIENT_ORIGIN)
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
 
 app.disable("x-powered-by");
 app.use(helmet());
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
+    origin: (origin, callback) => {
+      callback(null, isAllowedClientOrigin(origin, clientOrigins, env.ALLOW_LAN_ORIGINS));
+    },
     credentials: true,
   })
 );

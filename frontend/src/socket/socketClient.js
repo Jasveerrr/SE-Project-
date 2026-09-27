@@ -1,11 +1,17 @@
 import { io } from "socket.io-client";
 
+const defaultSocketOrigin =
+  typeof window === "undefined"
+    ? "http://localhost:5001"
+    : `${window.location.protocol}//${window.location.hostname}:5001`;
+
 const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
   import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
-  "http://localhost:5001";
+  defaultSocketOrigin;
 
 let socket;
+let discoverySocket;
 
 function getSocket() {
   if (!socket || socket.io?.uri !== SOCKET_URL) {
@@ -45,5 +51,23 @@ export const socketClient = {
           else resolve(response.data);
         });
     });
+  },
+};
+
+export const nearbySocketClient = {
+  connect() {
+    if (!discoverySocket || discoverySocket.io?.uri !== `${SOCKET_URL}/discovery`) {
+      discoverySocket?.disconnect();
+      discoverySocket = io(`${SOCKET_URL}/discovery`, {
+        autoConnect: false,
+        transports: ["websocket", "polling"],
+      });
+    }
+    if (!discoverySocket.connected) discoverySocket.connect();
+    return discoverySocket;
+  },
+  disconnect() {
+    discoverySocket?.disconnect();
+    discoverySocket = null;
   },
 };

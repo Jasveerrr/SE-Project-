@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { DeviceCard } from "../../components/device/DeviceCard/DeviceCard.jsx";
 import { Loader } from "../../components/ui/Loader/Loader.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
+import { useNearby } from "../../context/NearbyContext.jsx";
 import { useDevices } from "../../hooks/useDevices.js";
 import { useTransfers } from "../../hooks/useTransfers.js";
 import { pairingService } from "../../services/pairingService.js";
@@ -63,6 +64,7 @@ async function toArrayBuffer(value) {
 
 export function Dashboard() {
   const { user, token } = useAuth();
+  const { nearbyDevices } = useNearby();
   const {
     devices,
     loading: devicesLoading,
@@ -83,6 +85,8 @@ export function Dashboard() {
   const [error, setError] = useState("");
   const [incomingPairing, setIncomingPairing] = useState(null);
   const [receivedFiles, setReceivedFiles] = useState([]);
+  const [addDeviceOpen, setAddDeviceOpen] = useState(false);
+  const [copyState, setCopyState] = useState("");
   const incomingTransfers = useRef(new Map());
 
   useEffect(() => {
@@ -199,6 +203,17 @@ export function Dashboard() {
     () => devices.filter((device) => device.deviceId !== ownDevice?.deviceId),
     [devices, ownDevice]
   );
+  const publicAppUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin;
+  const isLocalOnlyUrl = /localhost|127\.0\.0\.1/.test(publicAppUrl);
+
+  async function copyPublicAppUrl() {
+    try {
+      await navigator.clipboard.writeText(publicAppUrl);
+      setCopyState("Copied");
+    } catch {
+      setCopyState("Copy unavailable");
+    }
+  }
 
   async function requestPairing(device) {
     setError("");
@@ -321,6 +336,77 @@ export function Dashboard() {
           </div>
         </div>
       )}
+      {addDeviceOpen && (
+        <div
+          className="device-modal-backdrop"
+          role="presentation"
+          onClick={() => setAddDeviceOpen(false)}
+        >
+          <section
+            className="device-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-device-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="panel-heading">
+              <div>
+                <span className="eyebrow">ADD DEVICE</span>
+                <h2 id="add-device-title">Add another device</h2>
+              </div>
+              <button className="link-button" onClick={() => setAddDeviceOpen(false)}>
+                Close
+              </button>
+            </div>
+            <p className="muted">
+              Connect the other phone, laptop, or browser to the same Wi-Fi network and open this
+              SwiftShare address:
+            </p>
+            <div className="share-url">
+              <code>{publicAppUrl}</code>
+              <button className="button button-secondary" onClick={copyPublicAppUrl}>
+                {copyState || "Copy"}
+              </button>
+            </div>
+            <ol className="device-instructions">
+              <li>Open SwiftShare on the other device.</li>
+              <li>Log in or register there.</li>
+              <li>It will register automatically and appear in Available Devices.</li>
+            </ol>
+            {isLocalOnlyUrl && (
+              <p className="form-note">
+                For a second device, set VITE_PUBLIC_APP_URL to this machine's LAN URL before
+                starting Vite.
+              </p>
+            )}
+          </section>
+        </div>
+      )}
+      {nearbyDevices.length > 0 && (
+        <section className="panel nearby-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">NEARBY DEVICES</span>
+              <h2>Connected to this SwiftShare network</h2>
+            </div>
+            <span className="count-badge">{nearbyDevices.length}</span>
+          </div>
+          <div className="nearby-list">
+            {nearbyDevices.map((device) => (
+              <article className="nearby-card" key={device.temporaryId}>
+                <div>
+                  <strong>{device.deviceName}</strong>
+                  <small>{device.platform} · Same SwiftShare network</small>
+                  {device.ipAddress && <small>{device.ipAddress}</small>}
+                </div>
+                <button className="text-action" onClick={() => setAddDeviceOpen(true)}>
+                  Add / Pair device
+                </button>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
       <div className="dashboard-grid">
         <section className="panel">
           <div className="panel-heading">
@@ -328,7 +414,12 @@ export function Dashboard() {
               <span className="eyebrow">DEVICES</span>
               <h2>Available devices</h2>
             </div>
-            <span className="count-badge">{otherDevices.length}</span>
+            <div className="panel-actions">
+              <button className="text-action" onClick={() => setAddDeviceOpen(true)}>
+                Add device
+              </button>
+              <span className="count-badge">{otherDevices.length}</span>
+            </div>
           </div>
           {devicesLoading ? (
             <Loader label="Finding devices..." />

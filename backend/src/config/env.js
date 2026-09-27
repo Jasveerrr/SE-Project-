@@ -38,13 +38,23 @@ function getPositiveNumber(name, fallback) {
   return value;
 }
 
+function getBoolean(name, fallback) {
+  const value = getString(name);
+  if (!value) return fallback;
+  if (["true", "1", "yes"].includes(value.toLowerCase())) return true;
+  if (["false", "0", "no"].includes(value.toLowerCase())) return false;
+  throw new AppError(`Environment variable ${name} must be a boolean.`, 500);
+}
+
 const env = Object.freeze({
   NODE_ENV: getString("NODE_ENV", "development"),
+  HOST: getString("HOST", "0.0.0.0"),
   PORT: getPositiveNumber("PORT", 5000),
   DATABASE_URL: getRequiredString("DATABASE_URL"),
   JWT_SECRET: getRequiredString("JWT_SECRET"),
   JWT_EXPIRES_IN: getString("JWT_EXPIRES_IN", "1d"),
   CLIENT_ORIGIN: getString("CLIENT_ORIGIN", "http://localhost:5173"),
+  ALLOW_LAN_ORIGINS: getBoolean("ALLOW_LAN_ORIGINS", true),
   SOCKET_PING_TIMEOUT: getPositiveNumber("SOCKET_PING_TIMEOUT", 20000),
   SOCKET_PING_INTERVAL: getPositiveNumber("SOCKET_PING_INTERVAL", 25000),
   UPLOAD_DIRECTORY: getString("UPLOAD_DIRECTORY", "uploads"),

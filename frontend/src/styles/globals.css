@@ -179,6 +179,11 @@ h2 {
   justify-content: space-between;
   margin-bottom: 22px;
 }
+.panel-actions {
+  align-items: center;
+  display: flex;
+  gap: 14px;
+}
 .count-badge {
   background: #edf5d2;
   border-radius: 50%;
@@ -203,6 +208,67 @@ h2 {
 .device-card.selected {
   border-color: #7d9d49;
   box-shadow: 0 0 0 2px #edf5d2;
+}
+.nearby-panel {
+  margin-bottom: 22px;
+  min-height: auto;
+}
+.nearby-list {
+  display: grid;
+  gap: 10px;
+}
+.nearby-card {
+  align-items: center;
+  border: 1px solid #e1e6df;
+  display: flex;
+  justify-content: space-between;
+  padding: 14px;
+}
+.nearby-card div {
+  display: grid;
+  gap: 5px;
+}
+.nearby-card small {
+  color: #7b8880;
+  font-family: Arial, sans-serif;
+  font-size: 0.75rem;
+}
+.device-modal-backdrop {
+  align-items: center;
+  background: rgb(23 61 53 / 35%);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 10;
+}
+.device-modal {
+  background: #fff;
+  border: 1px solid #dce2d8;
+  border-radius: 6px;
+  max-width: 560px;
+  padding: 26px;
+  width: 100%;
+}
+.share-url {
+  align-items: center;
+  background: #f1f5ed;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  padding: 12px;
+}
+.share-url code {
+  overflow-wrap: anywhere;
+}
+.device-instructions {
+  color: #52665e;
+  font-family: Arial, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1.8;
+  margin: 18px 0 0;
+  padding-left: 20px;
 }
 .device-select {
   align-items: center;
@@ -270,6 +336,13 @@ h2 {
 .danger-action {
   color: #a44f3f;
   margin-left: 12px;
+}
+@media (max-width: 700px) {
+  .nearby-card,
+  .share-url {
+    align-items: flex-start;
+    flex-direction: column;
+  }
 }
 .transfer-form,
 .settings-card {

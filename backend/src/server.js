@@ -7,6 +7,6 @@ const server = http.createServer(app);
 
 registerSocketServer(server);
 
-server.listen(env.PORT, () => {
-  console.log(`SwiftShare backend listening on port ${env.PORT}`);
+server.listen(env.PORT, env.HOST, () => {
+  console.log(`SwiftShare backend listening on ${env.HOST}:${env.PORT}`);
 });

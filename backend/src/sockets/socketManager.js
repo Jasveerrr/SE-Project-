@@ -1,6 +1,8 @@
 import { Server } from "socket.io";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
+import { isAllowedClientOrigin } from "../config/cors.js";
+import { registerDiscoveryNamespace } from "./discoveryNamespace.js";
 import { registerSocketEvents } from "./socketEvents.js";
 
 export let io = null;
@@ -38,13 +40,16 @@ export function registerSocketServer(server) {
   try {
     io = new Server(server, {
       cors: {
-        origin: corsOrigins,
+        origin: (origin, callback) =>
+          callback(null, isAllowedClientOrigin(origin, corsOrigins, env.ALLOW_LAN_ORIGINS)),
         credentials: true,
       },
       transports: ["websocket", "polling"],
       pingTimeout: 20000,
       pingInterval: 25000,
     });
+
+    registerDiscoveryNamespace(io);
 
     io.use((socket, next) => {
       try {
