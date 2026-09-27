@@ -11,6 +11,7 @@ import { transferRoutes } from "./routes/transferRoutes.js";
 import { pairingRoutes } from "./routes/PairingRoutes.js";
 import { notFoundHandler, errorHandler } from "./middleware/errorHandler.js";
 import { isAllowedClientOrigin } from "./config/cors.js";
+import os from "node:os";
 
 export const app = express();
 
@@ -18,6 +19,13 @@ const clientOrigins = String(env.CLIENT_ORIGIN)
   .split(",")
   .map((origin) => origin.trim())
   .filter(Boolean);
+
+function getLanAppUrls() {
+  return Object.values(os.networkInterfaces())
+    .flat()
+    .filter((network) => network && network.family === "IPv4" && !network.internal)
+    .map((network) => `http://${network.address}:${env.FRONTEND_PORT}`);
+}
 
 app.disable("x-powered-by");
 app.use(helmet());
@@ -33,6 +41,10 @@ app.use(compression());
 app.use(cookieParser());
 app.use(express.json({ limit: `${env.MAX_FILE_SIZE}b` }));
 app.use(express.urlencoded({ extended: true, limit: `${env.MAX_FILE_SIZE}b` }));
+
+app.get("/api/runtime-config", (_request, response) => {
+  response.json({ success: true, lanAppUrls: getLanAppUrls() });
+});
 
 if (env.NODE_ENV === "development") {
   app.use(morgan("dev"));

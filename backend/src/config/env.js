@@ -55,6 +55,7 @@ const env = Object.freeze({
   JWT_EXPIRES_IN: getString("JWT_EXPIRES_IN", "1d"),
   CLIENT_ORIGIN: getString("CLIENT_ORIGIN", "http://localhost:5173"),
   ALLOW_LAN_ORIGINS: getBoolean("ALLOW_LAN_ORIGINS", true),
+  FRONTEND_PORT: getPositiveNumber("FRONTEND_PORT", 5173),
   SOCKET_PING_TIMEOUT: getPositiveNumber("SOCKET_PING_TIMEOUT", 20000),
   SOCKET_PING_INTERVAL: getPositiveNumber("SOCKET_PING_INTERVAL", 25000),
   UPLOAD_DIRECTORY: getString("UPLOAD_DIRECTORY", "uploads"),

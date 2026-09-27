@@ -284,6 +284,22 @@ h2 {
 .device-select:disabled {
   cursor: default;
 }
+.device-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  margin-left: 46px;
+  margin-top: 12px;
+}
+.device-action {
+  font-size: 0.75rem;
+  padding: 8px 11px;
+}
+.device-current {
+  color: #718079;
+  font-family: Arial, sans-serif;
+  font-size: 0.75rem;
+}
 .device-icon {
   align-items: center;
   background: #e8eee5;
@@ -336,6 +352,20 @@ h2 {
 .danger-action {
   color: #a44f3f;
   margin-left: 12px;
+}
+.button-danger {
+  background: #f4ddd7;
+  color: #914535;
+}
+.confirmation-modal h2 {
+  line-height: 1.25;
+  margin-bottom: 12px;
+}
+.confirmation-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 22px;
 }
 @media (max-width: 700px) {
   .nearby-card,

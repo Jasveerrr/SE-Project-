@@ -1,4 +1,4 @@
-export function DeviceCard({ device, selected, onSelect, onPair, onRemove, own }) {
+export function DeviceCard({ device, selected, onSelect, onPair, onRemove, own, current }) {
   return (
     <article className={`device-card ${selected ? "selected" : ""}`}>
       <button className="device-select" onClick={() => onSelect?.(device)} disabled={own}>
@@ -12,16 +12,22 @@ export function DeviceCard({ device, selected, onSelect, onPair, onRemove, own }
         </span>
         <span className={`status-dot ${device.status === "connected" ? "online" : "offline"}`} />
       </button>
-      {!own && (
-        <button className="text-action" onClick={() => onPair?.(device)}>
-          Pair device
-        </button>
-      )}
-      {own && device.status !== "connected" && (
-        <button className="text-action danger-action" onClick={() => onRemove?.(device)}>
-          Remove
-        </button>
-      )}
+      <div className="device-actions">
+        {!own && (
+          <button
+            className="button button-secondary device-action"
+            onClick={() => onPair?.(device)}
+          >
+            Pair device
+          </button>
+        )}
+        {own && current && <span className="device-current">This device</span>}
+        {own && !current && (
+          <button className="button button-danger device-action" onClick={() => onRemove?.(device)}>
+            Remove
+          </button>
+        )}
+      </div>
     </article>
   );
 }

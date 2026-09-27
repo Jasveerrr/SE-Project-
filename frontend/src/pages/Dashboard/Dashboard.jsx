@@ -3,6 +3,7 @@ import { DeviceCard } from "../../components/device/DeviceCard/DeviceCard.jsx";
 import { Loader } from "../../components/ui/Loader/Loader.jsx";
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useNearby } from "../../context/NearbyContext.jsx";
+import { apiClient } from "../../api/apiClient.js";
 import { useDevices } from "../../hooks/useDevices.js";
 import { useTransfers } from "../../hooks/useTransfers.js";
 import { pairingService } from "../../services/pairingService.js";
@@ -87,6 +88,8 @@ export function Dashboard() {
   const [receivedFiles, setReceivedFiles] = useState([]);
   const [addDeviceOpen, setAddDeviceOpen] = useState(false);
   const [copyState, setCopyState] = useState("");
+  const [runtimeLanUrl, setRuntimeLanUrl] = useState("");
+  const [deviceToRemove, setDeviceToRemove] = useState(null);
   const incomingTransfers = useRef(new Map());
 
   useEffect(() => {
@@ -203,7 +206,25 @@ export function Dashboard() {
     () => devices.filter((device) => device.deviceId !== ownDevice?.deviceId),
     [devices, ownDevice]
   );
-  const publicAppUrl = import.meta.env.VITE_PUBLIC_APP_URL || window.location.origin;
+  useEffect(() => {
+    if (import.meta.env.VITE_PUBLIC_APP_URL) return undefined;
+    let active = true;
+    apiClient
+      .get("/runtime-config")
+      .then(({ data }) => {
+        if (active) setRuntimeLanUrl(data.lanAppUrls?.[0] || "");
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const publicAppUrl =
+    import.meta.env.VITE_PUBLIC_APP_URL ||
+    (runtimeLanUrl && /localhost|127\.0\.0\.1/.test(window.location.hostname)
+      ? runtimeLanUrl
+      : window.location.origin);
   const isLocalOnlyUrl = /localhost|127\.0\.0\.1/.test(publicAppUrl);
 
   async function copyPublicAppUrl() {
@@ -241,11 +262,17 @@ export function Dashboard() {
   }
 
   async function removeDevice(device) {
-    if (!window.confirm(`Remove ${device.deviceName} from your devices?`)) return;
+    setDeviceToRemove(device);
+  }
+
+  async function confirmRemoveDevice() {
+    const device = deviceToRemove;
+    if (!device) return;
     setError("");
     setMessage("");
     try {
       await deviceService.remove(device.deviceId);
+      setDeviceToRemove(null);
       await refreshDevices();
       setMessage(`${device.deviceName} was removed.`);
     } catch (removeError) {
@@ -397,10 +424,12 @@ export function Dashboard() {
                 <div>
                   <strong>{device.deviceName}</strong>
                   <small>{device.platform} · Same SwiftShare network</small>
-                  {device.ipAddress && <small>{device.ipAddress}</small>}
                 </div>
-                <button className="text-action" onClick={() => setAddDeviceOpen(true)}>
-                  Add / Pair device
+                <button
+                  className="button button-secondary device-action"
+                  onClick={() => setAddDeviceOpen(true)}
+                >
+                  Add device
                 </button>
               </article>
             ))}
@@ -430,6 +459,7 @@ export function Dashboard() {
                   key={device.deviceId}
                   device={device}
                   own={device.userId === user.id}
+                  current={device.deviceId === ownDevice?.deviceId}
                   selected={selectedDevice?.deviceId === device.deviceId}
                   onSelect={setSelectedDevice}
                   onPair={requestPairing}
@@ -491,6 +521,35 @@ export function Dashboard() {
           </p>
         </section>
       </div>
+      {deviceToRemove && (
+        <div
+          className="device-modal-backdrop"
+          role="presentation"
+          onClick={() => setDeviceToRemove(null)}
+        >
+          <section
+            className="device-modal confirmation-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-device-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <span className="eyebrow">REMOVE DEVICE</span>
+            <h2 id="remove-device-title">Remove {deviceToRemove.deviceName} from your devices?</h2>
+            <p className="muted">
+              Existing transfer history will be kept. This device can be added again later.
+            </p>
+            <div className="confirmation-actions">
+              <button className="button button-secondary" onClick={() => setDeviceToRemove(null)}>
+                Cancel
+              </button>
+              <button className="button button-danger" onClick={confirmRemoveDevice}>
+                Remove device
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       {receivedFiles.length > 0 && (
         <section className="panel received-panel">
           <div className="panel-heading">
