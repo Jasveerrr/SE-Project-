@@ -236,21 +236,6 @@ export function Dashboard() {
     }
   }
 
-  async function requestPairing(device) {
-    setError("");
-    setMessage("");
-    try {
-      await pairingService.request({
-        pairingId: crypto.randomUUID(),
-        senderDeviceId: ownDevice.deviceId,
-        receiverDeviceId: device.deviceId,
-      });
-      setMessage(`Pairing request sent to ${device.deviceName}.`);
-    } catch (requestError) {
-      setError(requestError.message);
-    }
-  }
-
   async function respondToPairing(action) {
     try {
       await pairingService[action](incomingPairing.pairingId);
@@ -462,7 +447,6 @@ export function Dashboard() {
                   current={device.deviceId === ownDevice?.deviceId}
                   selected={selectedDevice?.deviceId === device.deviceId}
                   onSelect={setSelectedDevice}
-                  onPair={requestPairing}
                   onRemove={removeDevice}
                 />
               ))}
@@ -535,10 +519,8 @@ export function Dashboard() {
             onClick={(event) => event.stopPropagation()}
           >
             <span className="eyebrow">REMOVE DEVICE</span>
-            <h2 id="remove-device-title">Remove {deviceToRemove.deviceName} from your devices?</h2>
-            <p className="muted">
-              Existing transfer history will be kept. This device can be added again later.
-            </p>
+            <h2 id="remove-device-title">Remove this device?</h2>
+            <p className="muted">This will remove it from your Available Devices list.</p>
             <div className="confirmation-actions">
               <button className="button button-secondary" onClick={() => setDeviceToRemove(null)}>
                 Cancel
