@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { transferService } from "../services/transferService.js";
 
-export function useTransfers(params = {}) {
+const DEFAULT_PARAMS = {};
+
+export function useTransfers(params = DEFAULT_PARAMS) {
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");

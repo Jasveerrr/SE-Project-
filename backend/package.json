@@ -7,6 +7,7 @@
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "build": "node -e \"console.log('backend build complete')\"",
+    "devices:cleanup": "node scripts/cleanup-stale-devices.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",

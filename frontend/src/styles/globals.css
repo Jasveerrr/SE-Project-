@@ -170,6 +170,7 @@ h2 {
   background: #fff;
   border: 1px solid #dce2d8;
   border-radius: 6px;
+  min-height: 280px;
   padding: 24px;
 }
 .panel-heading {
@@ -190,11 +191,13 @@ h2 {
 .transfer-list {
   display: grid;
   gap: 10px;
+  min-height: 150px;
 }
 .device-card,
 .transfer-card {
   border: 1px solid #e1e6df;
   border-radius: 4px;
+  min-height: 120px;
   padding: 14px;
 }
 .device-card.selected {
@@ -231,6 +234,11 @@ h2 {
   display: grid;
   gap: 4px;
 }
+.device-email {
+  color: #61716a;
+  font-family: Arial, sans-serif;
+  font-size: 0.72rem;
+}
 .device-copy small,
 .transfer-heading small,
 .file-preview span {
@@ -258,6 +266,10 @@ h2 {
 .text-action:hover {
   color: #173d35;
   text-decoration: underline;
+}
+.danger-action {
+  color: #a44f3f;
+  margin-left: 12px;
 }
 .transfer-form,
 .settings-card {
@@ -374,13 +386,16 @@ select:focus {
 }
 .empty-state {
   color: #7a8780;
+  display: flex;
   font-family: Arial, sans-serif;
   font-size: 0.85rem;
+  min-height: 120px;
   padding: 16px 0;
 }
 .empty-state.large {
   background: #fff;
   border: 1px dashed #cbd7ca;
+  min-height: 180px;
   padding: 44px;
   text-align: center;
 }

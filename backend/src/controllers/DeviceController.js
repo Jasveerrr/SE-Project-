@@ -36,7 +36,9 @@ export const DeviceController = {
   },
   async getDevices(request, response, next) {
     try {
-      const devices = await DeviceService.listDevices({ payload: { userId: request.user?.id } });
+      const devices = await DeviceService.listDevices({
+        payload: { userId: request.user?.id, excludeCurrentUser: true },
+      });
       return send(response, 200, { message: "Devices retrieved.", devices, count: devices.length });
     } catch (error) {
       return next(error);
@@ -51,11 +53,7 @@ export const DeviceController = {
   },
   async removeDisconnectedDevice(request, response, next) {
     try {
-      return send(
-        response,
-        200,
-        await DeviceService.removeDisconnectedDevice({ payload: payload(request) })
-      );
+      return send(response, 200, await DeviceService.removeDevice({ payload: payload(request) }));
     } catch (error) {
       return next(error);
     }

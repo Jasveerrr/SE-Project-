@@ -140,7 +140,7 @@ export const DeviceService = {
             include: deviceInclude,
           });
       return response("Device discovered.", device, {
-        devices: await this.listDevices({ userId }),
+        devices: await this.listDevices({ userId, excludeCurrentUser: true }),
         count: 1,
       });
     } catch (error) {
@@ -155,10 +155,23 @@ export const DeviceService = {
   async listDevices(input = {}) {
     const { payload } = invocation(input);
     const filters = isPlainObject(payload) ? payload : {};
+    const currentUserId = getUserId(filters, false);
     const prisma = await DatabaseService.getClient();
     try {
       const devices = await prisma.device.findMany({
-        where: { ...(getUserId(filters, false) ? { userId: getUserId(filters, false) } : {}) },
+        where: {
+          status: { not: "removed" },
+          ...(currentUserId && filters.excludeCurrentUser !== false
+            ? {
+                OR: [
+                  { userId: { not: currentUserId } },
+                  { userId: currentUserId, status: { not: "connected" } },
+                ],
+              }
+            : currentUserId
+              ? { userId: currentUserId }
+              : {}),
+        },
         include: deviceInclude,
         orderBy: { lastSeenAt: "desc" },
       });
@@ -248,6 +261,42 @@ export const DeviceService = {
       return response("Device disconnected.", device, { removed: true });
     } catch (error) {
       handleDatabaseError(error, "Unable to disconnect device.");
+    }
+  },
+
+  async removeDevice(input = {}) {
+    const { payload } = invocation(input);
+    assertPayload(payload);
+    const deviceId = getDeviceId(payload);
+    const userId = getUserId(payload);
+    const prisma = await DatabaseService.getClient();
+
+    try {
+      const device = await findDevice(prisma, deviceId);
+      if (!device) throw new AppError("Device not found.", 404);
+      if (device.userId !== userId) {
+        throw new AppError("You can only remove your own devices.", 403);
+      }
+
+      const activeTransfer = await prisma.transfer.findFirst({
+        where: {
+          status: { in: ["PENDING", "ACTIVE"] },
+          OR: [{ senderDeviceId: device.id }, { receiverDeviceId: device.id }],
+        },
+        select: { transferId: true },
+      });
+      if (activeTransfer) {
+        throw new AppError("Cannot remove a device with an active transfer.", 409);
+      }
+
+      const removed = await prisma.device.update({
+        where: { id: device.id },
+        data: { status: "removed", socketId: null, lastSeenAt: new Date() },
+        include: deviceInclude,
+      });
+      return response("Device removed.", removed);
+    } catch (error) {
+      handleDatabaseError(error, "Unable to remove device.");
     }
   },
 };

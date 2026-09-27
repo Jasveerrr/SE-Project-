@@ -1,18 +1,19 @@
 import { io } from "socket.io-client";
 
+const SOCKET_URL =
+  import.meta.env.VITE_SOCKET_URL ||
+  import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
+  "http://localhost:5001";
+
 let socket;
 
 function getSocket() {
-  if (!socket) {
-    socket = io(
-      import.meta.env.VITE_SOCKET_URL ||
-        import.meta.env.VITE_API_URL?.replace(/\/api\/?$/, "") ||
-        "http://localhost:5000",
-      {
-        autoConnect: false,
-        transports: ["websocket", "polling"],
-      }
-    );
+  if (!socket || socket.io?.uri !== SOCKET_URL) {
+    if (socket) socket.disconnect();
+    socket = io(SOCKET_URL, {
+      autoConnect: false,
+      transports: ["websocket", "polling"],
+    });
   }
   return socket;
 }
@@ -25,7 +26,10 @@ export const socketClient = {
     return client;
   },
   disconnect() {
-    if (socket?.connected) socket.disconnect();
+    if (socket) {
+      socket.disconnect();
+      socket = null;
+    }
   },
   on(event, handler) {
     getSocket().on(event, handler);

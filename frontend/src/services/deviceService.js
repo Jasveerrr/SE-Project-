@@ -21,4 +21,8 @@ export const deviceService = {
     const { data } = await apiClient.put(`/devices/${encodeURIComponent(deviceId)}`, payload);
     return data.device;
   },
+  async remove(deviceId) {
+    const { data } = await apiClient.delete(`/devices/${encodeURIComponent(deviceId)}`);
+    return data.device;
+  },
 };

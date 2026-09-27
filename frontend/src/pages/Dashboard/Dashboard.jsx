@@ -13,12 +13,36 @@ import { TransferCard } from "../../components/transfer/TransferCard/TransferCar
 const DEVICE_KEY = "swiftshare_device_id";
 const CHUNK_SIZE = 256 * 1024;
 
+function generateDeviceId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return `device-${crypto.randomUUID()}`;
+  }
+  return `device-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`;
+}
+
+function getDeviceStorageKey(userId) {
+  return `${DEVICE_KEY}_${String(userId || "guest")}`;
+}
+
 function getLocalDeviceId(userId) {
-  const stored = localStorage.getItem(DEVICE_KEY);
-  if (stored) return stored;
-  const id = `web-${userId}`;
-  localStorage.setItem(DEVICE_KEY, id);
+  const storageKey = getDeviceStorageKey(userId);
+  const stored = localStorage.getItem(storageKey);
+  if (stored && stored.trim()) return stored.trim();
+  const id = generateDeviceId();
+  localStorage.setItem(storageKey, id);
   return id;
+}
+
+function replaceLocalDeviceId(userId) {
+  const storageKey = getDeviceStorageKey(userId);
+  const id = generateDeviceId();
+  localStorage.setItem(storageKey, id);
+  return id;
+}
+
+function isDeviceConflictError(error) {
+  const message = String(error?.message || error || "");
+  return /belongs to another user|device or socket already exists|already exists/i.test(message);
 }
 
 function mergeTransfer(list, transfer) {
@@ -62,18 +86,42 @@ export function Dashboard() {
   const incomingTransfers = useRef(new Map());
 
   useEffect(() => {
-    const deviceId = getLocalDeviceId(user.id);
-    const payload = {
-      deviceId,
-      deviceName: user.displayName || "This browser",
-      ipAddress: "127.0.0.1",
-      platform: "WEB",
+    if (!user) return undefined;
+
+    let active = true;
+    let retried = false;
+
+    const registerCurrentDevice = async (deviceId) => {
+      const payload = {
+        deviceId,
+        deviceName: user.displayName || "This browser",
+        ipAddress: "127.0.0.1",
+        platform: "WEB",
+      };
+
+      try {
+        const registeredDevice = await deviceService.discover(payload);
+        if (!active) return;
+        setOwnDevice(registeredDevice);
+        await refreshDevices();
+        setError("");
+      } catch (discoverError) {
+        if (active && !retried && isDeviceConflictError(discoverError)) {
+          retried = true;
+          const refreshedDeviceId = replaceLocalDeviceId(user.id);
+          await registerCurrentDevice(refreshedDeviceId);
+          return;
+        }
+        if (active) setError(discoverError.message || "Unable to register this device.");
+      }
     };
-    deviceService
-      .discover(payload)
-      .then(setOwnDevice)
-      .catch((discoverError) => setError(discoverError.message));
-  }, [user]);
+
+    registerCurrentDevice(getLocalDeviceId(user.id));
+
+    return () => {
+      active = false;
+    };
+  }, [user, refreshDevices]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -90,6 +138,9 @@ export function Dashboard() {
         .catch(() => undefined);
     };
     const cleanups = [
+      socketClient.on("device:discover", () => {
+        refreshDevices().catch(() => undefined);
+      }),
       socketClient.on("pairing:request", (result) => setIncomingPairing(result?.pairing || result)),
       socketClient.on("transfer:start", (result) =>
         (() => {
@@ -142,7 +193,7 @@ export function Dashboard() {
       client.off("connect_error", handleConnectError);
       socketClient.disconnect();
     };
-  }, [token, ownDevice, setTransfers]);
+  }, [token, ownDevice, refreshDevices, setTransfers]);
 
   const otherDevices = useMemo(
     () => devices.filter((device) => device.deviceId !== ownDevice?.deviceId),
@@ -171,6 +222,19 @@ export function Dashboard() {
       setIncomingPairing(null);
     } catch (responseError) {
       setError(responseError.message);
+    }
+  }
+
+  async function removeDevice(device) {
+    if (!window.confirm(`Remove ${device.deviceName} from your devices?`)) return;
+    setError("");
+    setMessage("");
+    try {
+      await deviceService.remove(device.deviceId);
+      await refreshDevices();
+      setMessage(`${device.deviceName} was removed.`);
+    } catch (removeError) {
+      setError(removeError.message);
     }
   }
 
@@ -274,9 +338,11 @@ export function Dashboard() {
                 <DeviceCard
                   key={device.deviceId}
                   device={device}
+                  own={device.userId === user.id}
                   selected={selectedDevice?.deviceId === device.deviceId}
                   onSelect={setSelectedDevice}
                   onPair={requestPairing}
+                  onRemove={removeDevice}
                 />
               ))}
             </div>
