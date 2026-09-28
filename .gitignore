@@ -8,6 +8,8 @@ build
 coverage
 .vite
 .prisma
+backend/.env
+backend/prisma/dev.db
 frontend/dist
 backend/dist
 backend/uploads/*
