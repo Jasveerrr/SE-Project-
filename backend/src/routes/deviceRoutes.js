@@ -10,4 +10,5 @@ deviceRoutes.post("/devices/refresh", DeviceController.refreshDevice);
 deviceRoutes.get("/devices", DeviceController.getDevices);
 deviceRoutes.get("/devices/:deviceId", DeviceController.getDevice);
 deviceRoutes.put("/devices/:deviceId", DeviceController.updateDevice);
-deviceRoutes.delete("/devices/:deviceId", DeviceController.removeDisconnectedDevice);
+deviceRoutes.delete("/devices/:deviceId", DeviceController.removeDevice);
+deviceRoutes.post("/devices/:deviceId/disconnect", DeviceController.removeDisconnectedDevice);

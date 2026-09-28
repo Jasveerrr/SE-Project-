@@ -62,4 +62,11 @@ export const DeviceController = {
       return next(error);
     }
   },
+  async removeDevice(request, response, next) {
+    try {
+      return send(response, 200, await DeviceService.removeDevice({ payload: payload(request) }));
+    } catch (error) {
+      return next(error);
+    }
+  },
 };

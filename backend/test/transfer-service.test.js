@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { PrismaClient } from "@prisma/client";
 import { DeviceService } from "../src/services/DeviceService.js";
+import { SocketService } from "../src/services/SocketService.js";
 import { TransferService } from "../src/services/TransferService.js";
 
 const rootDir = fileURLToPath(new URL("..", import.meta.url));
@@ -122,6 +123,150 @@ test("discoverDevices updates same browser device without creating duplicates", 
     assert.equal(rows.length, 1);
     assert.equal(first.device.deviceId, "browser-device");
     assert.equal(second.device.deviceName, "Chrome on laptop updated");
+  } finally {
+    await nextPrisma.$disconnect();
+  }
+});
+
+test("discoverDevices updates an existing deviceId instead of creating a duplicate row", async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.create({
+      data: {
+        id: "user-1",
+        email: "user-1@example.com",
+        passwordHash: "hash",
+        displayName: "Demo User",
+      },
+    });
+
+    await prisma.device.create({
+      data: {
+        deviceId: "stable-device",
+        userId: "user-1",
+        deviceName: "Old browser",
+        ipAddress: "10.0.0.10",
+        platform: "WEB",
+        status: "connected",
+        socketId: "old-socket",
+      },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  const result = await DeviceService.discoverDevices({
+    payload: {
+      userId: "user-1",
+      deviceId: "stable-device",
+      deviceName: "Updated browser",
+      ipAddress: "10.0.0.11",
+      platform: "WEB",
+      socketId: "new-socket",
+    },
+  });
+
+  const nextPrisma = new PrismaClient();
+  try {
+    const rows = await nextPrisma.device.findMany({ where: { userId: "user-1" } });
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].deviceId, "stable-device");
+    assert.equal(rows[0].deviceName, "Updated browser");
+    assert.equal(rows[0].socketId, "new-socket");
+    assert.equal(result.device.deviceName, "Updated browser");
+  } finally {
+    await nextPrisma.$disconnect();
+  }
+});
+
+test("discoverDevices rejects a deviceId that belongs to another user", async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.createMany({
+      data: [
+        {
+          id: "user-1",
+          email: "user-1@example.com",
+          passwordHash: "hash",
+          displayName: "User One",
+        },
+        {
+          id: "user-2",
+          email: "user-2@example.com",
+          passwordHash: "hash",
+          displayName: "User Two",
+        },
+      ],
+    });
+
+    await prisma.device.create({
+      data: {
+        deviceId: "foreign-device",
+        userId: "user-2",
+        deviceName: "Other user device",
+        ipAddress: "192.168.1.50",
+        platform: "WEB",
+        status: "connected",
+      },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  await assert.rejects(
+    () =>
+      DeviceService.discoverDevices({
+        payload: {
+          userId: "user-1",
+          deviceId: "foreign-device",
+          deviceName: "Attempted takeover",
+          ipAddress: "192.168.1.51",
+          platform: "WEB",
+        },
+      }),
+    /belongs to another user/i
+  );
+});
+
+test("handleDisconnect does not mark a device disconnected when a newer socket owns it", async () => {
+  const prisma = new PrismaClient();
+  try {
+    await prisma.user.create({
+      data: {
+        id: "user-1",
+        email: "user-1@example.com",
+        passwordHash: "hash",
+        displayName: "Demo User",
+      },
+    });
+
+    await prisma.device.create({
+      data: {
+        deviceId: "socket-race-device",
+        userId: "user-1",
+        deviceName: "Race device",
+        ipAddress: "10.0.0.22",
+        platform: "WEB",
+        status: "connected",
+        socketId: "new-socket",
+      },
+    });
+  } finally {
+    await prisma.$disconnect();
+  }
+
+  const result = await SocketService.handleDisconnect({
+    socket: { id: "old-socket", data: { deviceId: "socket-race-device" } },
+  });
+
+  const nextPrisma = new PrismaClient();
+  try {
+    const device = await nextPrisma.device.findUnique({
+      where: { deviceId: "socket-race-device" },
+    });
+    assert.equal(result.removedDevices, 0);
+    assert.equal(device.status, "connected");
+    assert.equal(device.socketId, "new-socket");
   } finally {
     await nextPrisma.$disconnect();
   }

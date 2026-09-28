@@ -93,10 +93,19 @@ function invocation(input = {}) {
 }
 
 async function findDevice(prisma, deviceId) {
-  return prisma.device.findFirst({
-    where: { OR: [{ id: deviceId }, { deviceId }] },
+  return prisma.device.findUnique({
+    where: { deviceId },
     include: deviceInclude,
   });
+}
+
+function normalizeDeviceRecord(device) {
+  if (!device) return null;
+  return {
+    ...device,
+    status: String(device.status || "disconnected").toLowerCase(),
+    lastSeenAt: device.lastSeenAt ?? device.updatedAt ?? null,
+  };
 }
 
 export const DeviceService = {
@@ -111,10 +120,12 @@ export const DeviceService = {
       const existing = await findDevice(prisma, deviceId);
       if (existing && existing.userId !== userId)
         throw new AppError("Device belongs to another user.", 403);
+
       const device = existing
         ? await prisma.device.update({
-            where: { id: existing.id },
+            where: { deviceId },
             data: {
+              userId,
               deviceName: getDeviceName(payload),
               ipAddress: getIpAddress(payload),
               platform: getPlatform(payload),
@@ -162,12 +173,7 @@ export const DeviceService = {
         where: {
           status: { not: "removed" },
           ...(currentUserId && filters.excludeCurrentUser !== false
-            ? {
-                OR: [
-                  { userId: { not: currentUserId } },
-                  { userId: currentUserId, status: { not: "connected" } },
-                ],
-              }
+            ? { userId: { not: currentUserId } }
             : currentUserId
               ? { userId: currentUserId }
               : {}),
@@ -175,7 +181,34 @@ export const DeviceService = {
         include: deviceInclude,
         orderBy: { lastSeenAt: "desc" },
       });
-      return devices.map(serializeDevice);
+
+      const byDeviceId = new Map();
+      for (const device of devices) {
+        const candidate = normalizeDeviceRecord(device);
+        const current = byDeviceId.get(candidate.deviceId);
+        if (!current) {
+          byDeviceId.set(candidate.deviceId, candidate);
+          continue;
+        }
+
+        const currentScore =
+          (current.status === "connected" ? 3 : 0) +
+          (current.lastSeenAt ? 2 : 0) +
+          (current.updatedAt ? 1 : 0);
+        const candidateScore =
+          (candidate.status === "connected" ? 3 : 0) +
+          (candidate.lastSeenAt ? 2 : 0) +
+          (candidate.updatedAt ? 1 : 0);
+
+        if (
+          candidateScore > currentScore ||
+          (!current.status && candidate.status === "connected")
+        ) {
+          byDeviceId.set(candidate.deviceId, candidate);
+        }
+      }
+
+      return [...byDeviceId.values()].map(serializeDevice);
     } catch (error) {
       handleDatabaseError(error, "Unable to fetch devices.");
     }
@@ -250,8 +283,10 @@ export const DeviceService = {
     try {
       const existing = await findDevice(prisma, deviceId);
       if (!existing) throw new AppError("Device not found.", 404);
-      if (socket?.id && existing.socketId && socket.id !== existing.socketId) {
-        throw new AppError("This device belongs to another socket connection.", 403);
+      if (socket?.id && existing.socketId !== socket.id) {
+        return response("Device socket unchanged; no disconnect applied.", existing, {
+          removed: false,
+        });
       }
       const device = await prisma.device.update({
         where: { id: existing.id },

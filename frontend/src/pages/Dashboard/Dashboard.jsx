@@ -206,11 +206,30 @@ export function Dashboard() {
     const seen = new Map();
     for (const device of devices) {
       if (device.deviceId === ownDevice?.deviceId || device.status === "removed") continue;
-      if (!seen.has(device.deviceId)) {
+      const current = seen.get(device.deviceId);
+      if (!current) {
+        seen.set(device.deviceId, device);
+        continue;
+      }
+
+      const currentWeight =
+        Number(current.status === "connected") * 10 +
+        Number(Boolean(current.lastSeenAt)) * 5 +
+        Date.parse(current.lastSeenAt || current.updatedAt || 0 || 0);
+      const candidateWeight =
+        Number(device.status === "connected") * 10 +
+        Number(Boolean(device.lastSeenAt)) * 5 +
+        Date.parse(device.lastSeenAt || device.updatedAt || 0 || 0);
+
+      if (candidateWeight > currentWeight) {
         seen.set(device.deviceId, device);
       }
     }
-    return [...seen.values()];
+    return [...seen.values()].sort(
+      (left, right) =>
+        Date.parse(right.lastSeenAt || right.updatedAt || 0) -
+        Date.parse(left.lastSeenAt || left.updatedAt || 0)
+    );
   }, [devices, ownDevice]);
   const currentUserId = user?.id ?? user?.userId;
   useEffect(() => {
