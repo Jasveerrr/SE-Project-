@@ -53,7 +53,11 @@ export const DeviceController = {
   },
   async removeDisconnectedDevice(request, response, next) {
     try {
-      return send(response, 200, await DeviceService.removeDevice({ payload: payload(request) }));
+      return send(
+        response,
+        200,
+        await DeviceService.removeDisconnectedDevice({ payload: payload(request) })
+      );
     } catch (error) {
       return next(error);
     }

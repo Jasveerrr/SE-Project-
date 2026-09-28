@@ -202,10 +202,16 @@ export function Dashboard() {
     };
   }, [token, ownDevice, refreshDevices, setTransfers]);
 
-  const otherDevices = useMemo(
-    () => devices.filter((device) => device.deviceId !== ownDevice?.deviceId),
-    [devices, ownDevice]
-  );
+  const otherDevices = useMemo(() => {
+    const seen = new Map();
+    for (const device of devices) {
+      if (device.deviceId === ownDevice?.deviceId || device.status === "removed") continue;
+      if (!seen.has(device.deviceId)) {
+        seen.set(device.deviceId, device);
+      }
+    }
+    return [...seen.values()];
+  }, [devices, ownDevice]);
   const currentUserId = user?.id ?? user?.userId;
   useEffect(() => {
     if (import.meta.env.VITE_PUBLIC_APP_URL) return undefined;

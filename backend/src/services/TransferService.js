@@ -560,6 +560,12 @@ export const TransferService = {
       if (socket?.id && transfer.socketId && socket.id !== transfer.socketId) {
         throw new AppError("This transfer belongs to another socket connection.", 403);
       }
+      if (transfer.bytesTransferred !== transfer.fileSize) {
+        throw new AppError(
+          "Transfer cannot be completed until all bytes have been received and confirmed.",
+          400
+        );
+      }
       return updateTransferRecord(
         prisma,
         transfer,

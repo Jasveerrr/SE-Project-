@@ -2,10 +2,13 @@ import axios from "axios";
 
 export const AUTH_TOKEN_KEY = "swiftshare_token";
 
+const defaultBackendPort = Number(
+  import.meta.env.VITE_BACKEND_PORT || import.meta.env.VITE_PORT || 5001
+);
 const defaultApiOrigin =
   typeof window === "undefined"
-    ? "http://localhost:5001"
-    : `${window.location.protocol}//${window.location.hostname}:5001`;
+    ? `http://localhost:${defaultBackendPort}`
+    : `${window.location.protocol}//${window.location.hostname}:${defaultBackendPort}`;
 
 const apiClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL || `${defaultApiOrigin}/api`,

@@ -49,7 +49,7 @@ function getBoolean(name, fallback) {
 const env = Object.freeze({
   NODE_ENV: getString("NODE_ENV", "development"),
   HOST: getString("HOST", "0.0.0.0"),
-  PORT: getPositiveNumber("PORT", 5000),
+  PORT: getPositiveNumber("PORT", 5001),
   DATABASE_URL: getRequiredString("DATABASE_URL"),
   JWT_SECRET: getRequiredString("JWT_SECRET"),
   JWT_EXPIRES_IN: getString("JWT_EXPIRES_IN", "1d"),

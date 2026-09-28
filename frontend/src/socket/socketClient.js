@@ -1,9 +1,12 @@
 import { io } from "socket.io-client";
 
+const defaultBackendPort = Number(
+  import.meta.env.VITE_BACKEND_PORT || import.meta.env.VITE_PORT || 5001
+);
 const defaultSocketOrigin =
   typeof window === "undefined"
-    ? "http://localhost:5001"
-    : `${window.location.protocol}//${window.location.hostname}:5001`;
+    ? `http://localhost:${defaultBackendPort}`
+    : `${window.location.protocol}//${window.location.hostname}:${defaultBackendPort}`;
 
 const SOCKET_URL =
   import.meta.env.VITE_SOCKET_URL ||
